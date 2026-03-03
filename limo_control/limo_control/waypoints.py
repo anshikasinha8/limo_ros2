@@ -54,17 +54,26 @@ class FourCorners(Node):
         self.y_data = []
 
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_cb, 10)
+        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
         self.timer = self.create_timer(0.05, self.control_loop)
 
         self.get_logger().info("FourCorners started. Waiting for /odom...")
 
-    def odom_cb(self, msg: Odometry):
+    def odom_callback(self, msg: Odometry):
         self.x = msg.pose.pose.position.x
         self.y = msg.pose.pose.position.y
 
         q = msg.pose.pose.orientation
         _, _, self.yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
+
+        if self.x0 is None:
+            self.x0, self.y0, self.yaw0 = self.x, self.y, self.yaw
+            self.get_logger().info(f"Latched initial pose: ({self.x:.2f}, {self.y:.2f}), yaw = {math.degrees(self.yaw):.1f} deg")
+
+        # Set local frame
+        self.x -= self.x0
+        self.y -= self.y0
+        self.yaw = ang_wrap(self.yaw - self.yaw0)
 
     def plot_xy(self):
         self.x_data.append(self.x)
